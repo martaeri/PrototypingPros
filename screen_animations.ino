@@ -31,10 +31,11 @@ void loop() {
   }
 
   blinkEyes();
-  sadEyes();
+  deadEyes();
   sadEyes2();
   happyEyes();
   sleepingEyes();
+  shockedEyes();
   delay(1500);
 }
 
@@ -71,45 +72,6 @@ void blinkEyes() {
   }
 }
 
-void sadEyes() {
-  // Animate outer edges tilting inward + top shrinking + widening
-  for (int step = 0; step <= 8; step++) {
-    display.clearDisplay();
-    display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
-
-    int topShrink = step / 2;  // how much the top moves down
-
-    // LEFT EYE
-    for (int y = 0; y < eyeHeight - topShrink; y++) {
-      float interp = float(y) / (eyeHeight - topShrink);
-      int outerShift = interp * step;
-
-      // Widen effect: add a small extra width proportional to shrinking
-      int extraWidth = topShrink;  
-      int xStart = leftEyeX - extraWidth / 2 + outerShift;
-      int width = eyeWidth + extraWidth - outerShift;
-
-      int yPos = eyeY + (eyeHeight - 1) - y;  // bottom fixed
-      display.drawFastHLine(xStart, yPos, width, SSD1306_BLACK);
-    }
-
-    // RIGHT EYE
-    for (int y = 0; y < eyeHeight - topShrink; y++) {
-      float interp = float(y) / (eyeHeight - topShrink);
-      int outerShift = interp * step;
-
-      int extraWidth = topShrink;  
-      int xStart = rightEyeX - extraWidth / 2;
-      int width = eyeWidth + extraWidth - outerShift;
-
-      int yPos = eyeY + (eyeHeight - 1) - y;  // bottom fixed
-      display.drawFastHLine(xStart, yPos, width, SSD1306_BLACK);
-    }
-
-    display.display();
-    delay(60);
-  }
-}
 
 void sadEyes2() {
   int steps = 12;  // number of animation frames
@@ -285,5 +247,133 @@ void sleepingEyes() {
   display.setCursor(115, 10); display.print("Z");
   display.display();
   delay(1500);
+}
+
+void shockedEyes() {
+  int stepsExpand = 5;   // frames for rapid widening
+  int maxHeight   = 26;  // maximum eye height when shocked
+  int maxWidth    = eyeWidth + 8;  // slightly wider than normal
+  int eyeYCenter  = SCREEN_HEIGHT / 2 - maxHeight / 2;
+
+  // --- Step 1: Rapid widening ---
+  for (int step = 0; step <= stepsExpand; step++) {
+    display.clearDisplay();
+    display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+
+    // Interpolate height and width
+    int h = eyeHeight + ((maxHeight - eyeHeight) * step) / stepsExpand;
+    int w = eyeWidth + ((maxWidth - eyeWidth) * step) / stepsExpand;
+
+    int leftX  = leftEyeX + (eyeWidth - w)/2;
+    int rightX = rightEyeX + (eyeWidth - w)/2;
+    int yTop   = eyeYCenter + (maxHeight - h)/2;
+
+    display.fillRect(leftX, yTop, w, h, SSD1306_BLACK);
+    display.fillRect(rightX, yTop, w, h, SSD1306_BLACK);
+
+    display.display();
+    delay(60);
+  }
+
+  // --- Step 2: Continuous vibration ---
+  int leftXBase  = leftEyeX + (eyeWidth - maxWidth)/2;
+  int rightXBase = rightEyeX + (eyeWidth - maxWidth)/2;
+  int maxOffset  = 3;  // pixels to shake left/right
+
+  while (true) {  // infinite vibration loop
+    for (int offset = -maxOffset; offset <= maxOffset; offset += 2) {
+      display.clearDisplay();
+      display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+
+      display.fillRect(leftXBase + offset, eyeYCenter, maxWidth, maxHeight, SSD1306_BLACK);
+      display.fillRect(rightXBase + offset, eyeYCenter, maxWidth, maxHeight, SSD1306_BLACK);
+
+      display.display();
+      delay(25);
+    }
+    for (int offset = maxOffset; offset >= -maxOffset; offset -= 2) {
+      display.clearDisplay();
+      display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+
+      display.fillRect(leftXBase + offset, eyeYCenter, maxWidth, maxHeight, SSD1306_BLACK);
+      display.fillRect(rightXBase + offset, eyeYCenter, maxWidth, maxHeight, SSD1306_BLACK);
+
+      display.display();
+      delay(25);
+    }
+  }
+}
+
+
+void deadEyes() {
+  int arcWidth = eyeWidth + 16;  // match wide arcs
+  int arcThickness = 6;           // thickness for eyes and X's
+  int cy = SCREEN_HEIGHT / 2.5;     // vertical center
+  int stepsFade = 6;              // frames for fading/shrinking
+
+  // --- Stage 1: Eyes fade downward ---
+  for (int step = 0; step <= stepsFade; step++) {
+    display.clearDisplay();
+    display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+
+    int yShift = (step * 6) / stepsFade;
+    int thickness = arcThickness - (step * arcThickness) / stepsFade;
+    if (thickness < 1) thickness = 1;
+
+    // --- LEFT EYE ---
+    int cx = leftEyeX + eyeWidth / 2;
+    for (int yOffset = 0; yOffset < thickness; yOffset++) {
+      for (int x = -arcWidth/2; x <= arcWidth/2; x++) {
+        int yPos = cy + yOffset + yShift;
+        if (yPos >= 0 && yPos < SCREEN_HEIGHT)
+          display.drawPixel(cx + x, yPos, SSD1306_BLACK);
+      }
+    }
+
+    // --- RIGHT EYE ---
+    cx = rightEyeX + eyeWidth / 2;
+    for (int yOffset = 0; yOffset < thickness; yOffset++) {
+      for (int x = -arcWidth/2; x <= arcWidth/2; x++) {
+        int yPos = cy + yOffset + yShift;
+        if (yPos >= 0 && yPos < SCREEN_HEIGHT)
+          display.drawPixel(cx + x, yPos, SSD1306_BLACK);
+      }
+    }
+
+    display.display();
+    delay(80);
+  }
+
+  // --- Stage 2: Draw even bigger thick X's using lines ---
+  display.clearDisplay();
+  display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+
+  int xSize = 24; // wider X
+  int ySize = 18; // taller X
+
+  // --- LEFT X ---
+  int leftXCenter = leftEyeX + eyeWidth/2;
+  int leftYCenter = cy + 2;
+
+  for (int t = 0; t < arcThickness; t++) {
+    display.drawLine(leftXCenter - xSize/2, leftYCenter - ySize/2 + t,
+                     leftXCenter + xSize/2, leftYCenter + ySize/2 + t, SSD1306_BLACK);
+    display.drawLine(leftXCenter - xSize/2, leftYCenter + ySize/2 + t,
+                     leftXCenter + xSize/2, leftYCenter - ySize/2 + t, SSD1306_BLACK);
+  }
+
+  // --- RIGHT X ---
+  int rightXCenter = rightEyeX + eyeWidth/2;
+  int rightYCenter = cy + 2;
+
+  for (int t = 0; t < arcThickness; t++) {
+    display.drawLine(rightXCenter - xSize/2, rightYCenter - ySize/2 + t,
+                     rightXCenter + xSize/2, rightYCenter + ySize/2 + t, SSD1306_BLACK);
+    display.drawLine(rightXCenter - xSize/2, rightYCenter + ySize/2 + t,
+                     rightXCenter + xSize/2, rightYCenter - ySize/2 + t, SSD1306_BLACK);
+  }
+
+  display.display();
+  delay(3000);  // hold dead pose longer
 }
 
